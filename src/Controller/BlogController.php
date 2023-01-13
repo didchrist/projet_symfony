@@ -7,8 +7,10 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use App\Entity\Article;
+use App\Entity\Comment;
 use App\Form\ArticleFormType;
-use Doctrine\Persistence\ObjectManager;
+use App\Form\CommentType;
+use App\Repository\CommentRepository;
 use Symfony\Component\HttpFoundation\Request;
 
 
@@ -42,7 +44,7 @@ class BlogController extends AbstractController
 
         if ($form->isSubmitted() and $form->isValid()) {
             if (!$article->getId()) {
-                $article->setCreatedAt(new \DateTimeImmutable());
+                $article->setCreatedAt(new \DateTime());
             }
 
             $articleRepository->save($article, true);
@@ -56,11 +58,24 @@ class BlogController extends AbstractController
         ]);
     }
     #[Route("/blog/{id}", name: "blog_show")]
-    public function show($id, ArticleRepository $repo)
+    public function show($id, ArticleRepository $repo, CommentRepository $commentRepository, Request $request)
     {
+        $comment = new Comment();
+        $form = $this->createForm(CommentType::class, $comment);
+
+        $form->handleRequest($request);
+
         $article = $repo->find($id);
+        if ($form->isSubmitted() and $form->isValid()) {
+            $comment->setCreateAt(new \DateTime())
+                ->setArticle($article);
+            $commentRepository->save($comment, true);
+
+            return $this->redirectToRoute('blog_show', ['id' => $article->getId()]);
+        }
         return $this->render('blog/show.html.twig', [
-            'article' => $article
+            'article' => $article,
+            'commentForm' => $form->createView()
         ]);
     }
 }
